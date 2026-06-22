@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Ramp Rider</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game">
+    <canvas id="canvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div class="stat"><span class="label">DIST</span><span id="dist">0</span><span class="unit">m</span></div>
+      <div class="stat"><span class="label">BEST</span><span id="best">0</span><span class="unit">m</span></div>
+      <div id="boost" class="boost">⚡ BOOST</div>
+      <div id="djump" class="boost djump">⏫ DOUBLE JUMP</div>
+    </div>
+
+    <!-- Overlay (ready / crashed / won) -->
+    <div id="overlay" class="show">
+      <div class="card">
+        <h1 id="title">RAMP RIDER</h1>
+        <p id="subtitle">Get to the finish line without crashing.</p>
+        <ul id="help">
+          <li><b>Jump</b> — Space / Up / tap JUMP</li>
+          <li><b>Spin</b> — Left/Right or ◀ ▶ to rotate in the air</li>
+          <li>Land on your wheels. Clear the gaps.</li>
+          <li>Grab <b>⚡ boosts</b> (distance) &amp; <b>⏫ double-jumps</b> (height) for the big jumps.</li>
+        </ul>
+        <button id="startBtn">START</button>
+      </div>
+    </div>
+
+    <!-- Touch / click controls -->
+    <div id="controls">
+      <div class="left-group">
+        <button class="ctrl rot" id="leanBack" aria-label="Lean back">◀</button>
+        <button class="ctrl rot" id="leanFwd" aria-label="Lean forward">▶</button>
+      </div>
+      <button class="ctrl jump" id="jumpBtn" aria-label="Jump">JUMP</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

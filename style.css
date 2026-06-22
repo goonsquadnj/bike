@@ -1,0 +1,171 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: #1a0f2e;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a0f2e;
+}
+
+#canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: flex;
+  gap: 18px;
+  pointer-events: none;
+}
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  background: rgba(20, 12, 36, 0.5);
+  padding: 6px 12px;
+  border-radius: 10px;
+  color: #fce8d6;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(4px);
+}
+.stat .label { font-size: 11px; letter-spacing: 1.5px; color: #d99a78; font-weight: 700; }
+.stat span:not(.label):not(.unit) { font-size: 22px; font-weight: 800; }
+.stat .unit { font-size: 12px; color: #d99a78; }
+
+/* Boost indicator — hidden until active */
+.boost {
+  display: flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #1a0f2e;
+  background: linear-gradient(90deg, #ffd24d, #ff9e3d);
+  box-shadow: 0 0 18px rgba(255, 180, 80, 0.7);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  pointer-events: none;
+}
+.boost.on { opacity: 1; transform: scale(1); animation: boostPulse 0.5s ease-in-out infinite alternate; }
+@keyframes boostPulse { to { box-shadow: 0 0 26px rgba(255, 200, 110, 0.95); } }
+
+/* Double-jump variant (cool tones) */
+.boost.djump {
+  color: #0d1230;
+  background: linear-gradient(90deg, #5be0ff, #b48cff);
+  box-shadow: 0 0 18px rgba(120, 180, 255, 0.7);
+}
+.boost.djump.on { animation: djumpPulse 0.5s ease-in-out infinite alternate; }
+@keyframes djumpPulse { to { box-shadow: 0 0 26px rgba(150, 200, 255, 0.95); } }
+
+/* Overlay */
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 9, 22, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 10;
+}
+#overlay.show { display: flex; }
+.card {
+  background: linear-gradient(180deg, #2c1a44, #1c1030);
+  border: 1px solid #5a3568;
+  border-radius: 18px;
+  padding: 28px 30px;
+  max-width: 380px;
+  text-align: center;
+  color: #fce8d6;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.card h1 {
+  font-size: 30px;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #ffd24d, #ff7a4d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.card #subtitle { color: #e3b79c; font-size: 15px; margin-bottom: 16px; }
+.card ul {
+  list-style: none;
+  text-align: left;
+  margin: 0 auto 20px;
+  display: inline-block;
+  color: #e9d5c4;
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+.card ul b { color: #ffce6b; }
+#startBtn {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #1a0f2e;
+  background: linear-gradient(90deg, #ffd24d, #ff7a4d);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 34px;
+  cursor: pointer;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+#startBtn:hover { filter: brightness(1.1); }
+#startBtn:active { transform: scale(0.96); }
+
+/* Controls */
+#controls {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 22px;
+  pointer-events: none;
+}
+.left-group { display: flex; gap: 14px; pointer-events: auto; }
+.ctrl {
+  pointer-events: auto;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(36, 22, 56, 0.55);
+  color: #fce8d6;
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.12s ease;
+  font-weight: 800;
+}
+.ctrl:active { transform: scale(0.93); background: rgba(255, 158, 77, 0.32); }
+.ctrl.rot { width: 66px; height: 66px; font-size: 26px; }
+.ctrl.jump {
+  width: 96px; height: 96px; font-size: 18px; letter-spacing: 1px;
+  border-radius: 50%;
+  background: rgba(255, 158, 77, 0.2);
+  border-color: rgba(255, 158, 77, 0.55);
+}
