@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ramp Rider — Level Editor</title>
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body>
+  <div id="toolbar">
+    <div class="tool-group">
+      <button class="tool active" data-tool="select" title="Drag terrain points up/down">↖ Select</button>
+      <button class="tool" data-tool="erase" title="Click objects to delete">🗑 Erase</button>
+      <button class="tool" data-tool="crate" title="Click terrain to place a crate">📦 Crate</button>
+      <button class="tool" data-tool="boost" title="Click terrain to place a boost">⚡ Boost</button>
+      <button class="tool" data-tool="djump" title="Click terrain to place a double-jump">⏫ D-Jump</button>
+    </div>
+    <div class="tool-group right">
+      <button id="resetBtn">↺ Reset to Default</button>
+      <button id="saveBtn" class="primary">💾 Save &amp; Play</button>
+    </div>
+  </div>
+
+  <div id="hint"></div>
+
+  <div id="canvas-wrap">
+    <canvas id="editor-canvas"></canvas>
+  </div>
+
+  <script>window.EDITOR_MODE = true;</script>
+  <script src="game.js"></script>
+  <script src="editor.js"></script>
+</body>
+</html>

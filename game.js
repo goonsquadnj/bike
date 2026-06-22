@@ -38,6 +38,18 @@ const POWERUPS = [];   // { x, y, type, taken }  'boost' (distance) | 'djump' (h
 let FINISH_X = 0, LEVEL_END = 0;
 
 (function buildLevel() {
+  // Load a manually-edited level from the editor if one has been saved.
+  const saved = localStorage.getItem('rampRiderLevel');
+  if (saved) {
+    try {
+      const d = JSON.parse(saved);
+      d.segs.forEach(s => SEGS.push(s));
+      d.crates.forEach(c => CRATES.push(c));
+      d.powerups.forEach(p => POWERUPS.push(p));
+      FINISH_X = d.finishX; LEVEL_END = d.levelEnd;
+      return;
+    } catch(e) { localStorage.removeItem('rampRiderLevel'); }
+  }
   let cx = 0, cy = 430;
   const seg   = (x0, y0, x1, y1) => SEGS.push({ x0, y0, x1, y1 });
   const flat  = (len) => { seg(cx, cy, cx + len, cy); cx += len; };
@@ -211,6 +223,7 @@ function bindButton(id, name) {
   el.addEventListener('pointercancel', off);
   // pointerleave removed — capture keeps events on the element even if thumb drifts off
 }
+if (!window.EDITOR_MODE) {
 bindButton('jumpBtn', 'jump');
 bindButton('leanBack', 'back');
 bindButton('leanFwd', 'fwd');
@@ -243,6 +256,7 @@ document.getElementById('overlay').addEventListener('touchend', (e) => {
   const dy = e.changedTouches[0].clientY - _swipeStartY;
   if (dy > 60 && document.fullscreenElement) document.exitFullscreen().catch(() => {});
 }, { passive: true });
+} // end !EDITOR_MODE input block
 
 // ===========================================================
 //  Helpers
@@ -465,8 +479,8 @@ function update(dt) {
 // ===========================================================
 //  Rendering
 // ===========================================================
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const canvas = window.EDITOR_MODE ? null : document.getElementById('canvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
 let viewScale = 1, viewOX = 0, viewOY = 0, dpr = 1;
 
 function resize() {
@@ -478,8 +492,7 @@ function resize() {
   viewOX = (cw - W * viewScale) / 2;
   viewOY = (ch - H * viewScale) / 2;
 }
-window.addEventListener('resize', resize);
-resize();
+if (!window.EDITOR_MODE) { window.addEventListener('resize', resize); resize(); }
 
 function cameraX() {
   let cx = (bike ? bike.x : START_X) - 300;
@@ -781,6 +794,8 @@ function frame(now) {
 }
 
 // ---- boot ----
-state = STATE.READY;
-resetBike();
-requestAnimationFrame(frame);
+if (!window.EDITOR_MODE) {
+  state = STATE.READY;
+  resetBike();
+  requestAnimationFrame(frame);
+}
