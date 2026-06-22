@@ -169,11 +169,12 @@ function startGame() {
 // ===========================================================
 //  Input
 // ===========================================================
-const input = { jump: false, jumpEdge: false, back: false, fwd: false };
+const input = { jump: false, jumpEdge: false, jumpRelease: false, back: false, fwd: false };
 
 function press(name, down) {
   if (name === 'jump') {
     if (down && !input.jump) input.jumpEdge = true;
+    if (!down && input.jump) input.jumpRelease = true;
     input.jump = down;
   } else {
     input[name] = down;
@@ -325,10 +326,12 @@ function update(dt) {
   bike.x += curSpeed * dt;
   wheelSpin += (curSpeed / WHEEL_R) * dt;
 
+  // Short-press = short jump: releasing jump early cuts upward velocity.
+  if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= 0.35;
+  input.jumpRelease = false;
+
   // Vertical integration.
-  // Hold jump to float longer (reduced gravity while rising); release early for a tiny hop.
-  const grav = (input.jump && bike.vy < 0 && !bike.grounded) ? GRAVITY * 0.35 : GRAVITY;
-  bike.vy += grav * dt;
+  bike.vy += GRAVITY * dt;
   bike.y += bike.vy * dt;
 
   // Air rotation control (auto-level when no button held).

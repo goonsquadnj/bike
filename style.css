@@ -13,8 +13,8 @@ html, body {
 #game {
   position: relative;
   width: 100vw;
-  height: 100dvh; /* dvh = dynamic viewport height, shrinks when browser chrome shows */
-  height: 100vh;  /* fallback for browsers without dvh */
+  height: 100vh;   /* fallback for browsers without dvh */
+  height: 100dvh;  /* dynamic viewport height — shrinks when mobile browser chrome shows */
   display: flex;
   align-items: center;
   justify-content: center;
