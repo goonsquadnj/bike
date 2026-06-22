@@ -164,12 +164,13 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 22px;
+  padding: 0 22px 0 48px; /* extra left padding clears Android back-gesture zone */
   pointer-events: none;
 }
 .left-group { display: flex; gap: 14px; pointer-events: auto; }
 .ctrl {
   pointer-events: auto;
+  touch-action: none; /* tells Android not to claim these touches as system gestures */
   border: 1px solid rgba(255,255,255,0.22);
   background: rgba(36, 22, 56, 0.55);
   color: #fce8d6;
