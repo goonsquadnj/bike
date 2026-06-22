@@ -216,6 +216,19 @@ bindButton('leanBack', 'back');
 bindButton('leanFwd', 'fwd');
 
 document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('shareBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const data = { title: 'Ramp Rider', text: 'Can you make it to the finish line?', url: 'https://bike-aft.pages.dev/' };
+  if (navigator.share) {
+    navigator.share(data).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(data.url).then(() => {
+      const btn = document.getElementById('shareBtn');
+      btn.textContent = 'COPIED!';
+      setTimeout(() => btn.textContent = 'SHARE', 1800);
+    });
+  }
+});
 document.getElementById('overlay').addEventListener('click', (e) => {
   if (e.target.id === 'overlay' && state !== STATE.READY) startGame();
 });
