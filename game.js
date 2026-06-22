@@ -132,7 +132,7 @@ let FINISH_X = 0, LEVEL_END = 0;
 
   // ===== ACT 1 — Learn the moves (gentle) =====
   flat(420);
-  hills(2); aCrate(); aGap(); whoops(3); aCrate(); aGap();
+  hills(1); flat(240); aCrate(); aGap(); whoops(2); aCrate(); aGap();
   kicker(230); hills(2); ledgeMesa();
 
   // ===== ACT 2 — Power-ups introduced =====
