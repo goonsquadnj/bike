@@ -197,6 +197,7 @@ function resetBike() {
     gun: null,
     ammo: 0,
     fireCooldown: 0,
+    aiming: false,
   };
   wheelSpin = 0;
   shake = 0;
@@ -385,42 +386,36 @@ function updateParticles(dt) {
 function update(dt) {
   if (state !== STATE.PLAYING) { input.jumpEdge = false; updateParticles(dt); return; }
 
-  // Bullet-time: slow-mo when airborne, real-time when grounded.
-  const tsTarget = bike.grounded ? 1.0 : 0.38;
+  // Bullet-time: slow-mo only when holding jump in air with a gun equipped.
+  const tsTarget = (bike.aiming && bike.gun && !bike.grounded) ? 0.38 : 1.0;
   timeScale += (tsTarget - timeScale) * dt * 8;
   const scaledDt = dt * timeScale;
 
   const curSpeed = SPEED * (bike.boost > 0 ? BOOST_MULT : 1);
   if (bike.boost > 0) bike.boost -= scaledDt;
 
-  // Jump — grounded jump or mid-air double-jump.
+  // Jump — grounded jump, aim start (airborne + gun), or double-jump.
   if (input.jumpEdge) {
     if (bike.grounded) {
       bike.vy = JUMP_VEL; bike.grounded = false;
+    } else if (bike.gun && bike.ammo > 0) {
+      bike.aiming = true;  // hold space to aim; release to fire
     } else if (bike.airJumps > 0) {
       bike.vy = JUMP_VEL; bike.airJumps--;
-      spawnBurst(bike.x, bike.y + 10, 10, ['#5be0ff', '#b48cff', '#ffffff']); // air-jump puff
+      spawnBurst(bike.x, bike.y + 10, 10, ['#5be0ff', '#b48cff', '#ffffff']);
     }
   }
   input.jumpEdge = false;
 
-  // Auto-fire while airborne.
-  if (!bike.grounded && bike.gun && bike.ammo > 0) {
-    bike.fireCooldown -= scaledDt;
-    if (bike.fireCooldown <= 0) {
-      // find nearest visible monster
-      let nearest = null, nearDist = Infinity;
-      for (const m of MONSTERS) {
-        const dx = m.x - bike.x, dy = m.y - bike.y;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        if (d < nearDist && d < 700) { nearest = m; nearDist = d; }
-      }
-      // aim toward nearest monster, else fire along bike angle
-      let aimAngle = bike.angle;
-      if (nearest) {
-        aimAngle = Math.atan2(nearest.y - bike.y, nearest.x - bike.x);
-      }
+  // Horizontal: constant (or boosted) speed.
+  bike.x += curSpeed * scaledDt;
+  wheelSpin += (curSpeed / WHEEL_R) * scaledDt;
+
+  // Release space: fire if aiming, otherwise cut jump arc (short-press = short jump).
+  if (input.jumpRelease) {
+    if (bike.aiming && bike.gun && bike.ammo > 0) {
       const gt = GUN_TYPES[bike.gun];
+      const aimAngle = bike.angle;
       if (gt.spread > 0) {
         for (let i = -2; i <= 2; i++) {
           BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(aimAngle + i * gt.spread) * gt.bSpeed, vy: Math.sin(aimAngle + i * gt.spread) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
@@ -428,22 +423,14 @@ function update(dt) {
       } else {
         BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(aimAngle) * gt.bSpeed, vy: Math.sin(aimAngle) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
       }
-      // Recoil only for rocket/cannon (high recoil guns)
       if (gt.recoil > 300) bike.vy += -Math.sin(aimAngle) * gt.recoil * 0.15;
       bike.ammo--;
       if (bike.ammo <= 0) bike.gun = null;
-      // fire rate: pistol=0.18s, shotgun=0.45s, rocket=0.8s, laser=0.1s, cannon=1.2s
-      const fireRates = { pistol:0.18, shotgun:0.45, rocket:0.8, laser:0.1, cannon:1.2 };
-      bike.fireCooldown = fireRates[bike.gun] || 0.25;
+    } else if (!bike.grounded && bike.vy < 0) {
+      bike.vy *= JUMP_CUT;
     }
+    bike.aiming = false;
   }
-
-  // Horizontal: constant (or boosted) speed.
-  bike.x += curSpeed * scaledDt;
-  wheelSpin += (curSpeed / WHEEL_R) * scaledDt;
-
-  // Short-press = short jump: releasing jump early cuts upward velocity.
-  if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= JUMP_CUT;
   input.jumpRelease = false;
 
   // Vertical integration.
@@ -497,6 +484,7 @@ function update(dt) {
       bike.angVel = 0;
       bike.grounded = true;
       bike.airTime = 0;
+      bike.aiming = false;
     } else {
       bike.grounded = false;
     }
@@ -975,6 +963,40 @@ function drawGunDrops(camX, t) {
   }
 }
 
+function drawAimLine(camX) {
+  if (!bike || !bike.aiming || !bike.gun || bike.grounded) return;
+  const gt = GUN_TYPES[bike.gun];
+  const aimAngle = bike.angle;
+  const sx = bike.x - camX, sy = bike.y;
+
+  // Simulate trajectory dots (small dt steps)
+  let bx = sx, by = sy;
+  let bvx = Math.cos(aimAngle) * gt.bSpeed * 0.06;
+  let bvy = Math.sin(aimAngle) * gt.bSpeed * 0.06;
+  const gStep = GRAVITY * 0.3 * 0.06;
+
+  ctx.save();
+  for (let i = 0; i < 10; i++) {
+    bx += bvx; by += bvy;
+    bvy += gStep;
+    const fade = 1 - i / 10;
+    const r = 4 - i * 0.3;
+    ctx.shadowColor = gt.color; ctx.shadowBlur = 8 * fade;
+    ctx.globalAlpha = fade * 0.85;
+    ctx.fillStyle = i % 2 === 0 ? '#ffffff' : gt.color;
+    ctx.beginPath(); ctx.arc(bx, by, Math.max(r, 1.5), 0, Math.PI * 2); ctx.fill();
+  }
+  // Draw line from bike to first dot (short connector)
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = gt.color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 6]);
+  ctx.shadowColor = gt.color; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + bvx * 0.5, sy + Math.sin(aimAngle) * gt.bSpeed * 0.06 * 0.5); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
 let timeSec = 0;
 function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1001,6 +1023,7 @@ function render() {
   drawFinish(camX);
   drawParticles(camX);
   if (bike) drawBike(camX);
+  drawAimLine(camX);
 
   // subtle vignette
   const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, H * 0.9);
