@@ -233,6 +233,17 @@ document.getElementById('overlay').addEventListener('click', (e) => {
   if (e.target.id === 'overlay' && state !== STATE.READY) startGame();
 });
 
+// Swipe down on the overlay to exit fullscreen (only when not playing)
+let _swipeStartY = 0;
+document.getElementById('overlay').addEventListener('touchstart', (e) => {
+  _swipeStartY = e.touches[0].clientY;
+}, { passive: true });
+document.getElementById('overlay').addEventListener('touchend', (e) => {
+  if (state === STATE.PLAYING) return;
+  const dy = e.changedTouches[0].clientY - _swipeStartY;
+  if (dy > 60 && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}, { passive: true });
+
 // ===========================================================
 //  Helpers
 // ===========================================================
