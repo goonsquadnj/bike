@@ -327,7 +327,7 @@ function update(dt) {
   wheelSpin += (curSpeed / WHEEL_R) * dt;
 
   // Short-press = short jump: releasing jump early cuts upward velocity.
-  if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= 0.35;
+  if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= 0.46;
   input.jumpRelease = false;
 
   // Vertical integration.
