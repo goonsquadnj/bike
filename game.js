@@ -19,8 +19,8 @@ const JUMP_VEL   = -700;  // upward launch from the jump button
 const RIDE_H     = 30;    // chassis center height above the surface when resting
 const WHEEL_BASE = 64;    // distance between the two wheels
 const WHEEL_R    = 15;    // wheel radius
-const ANG_ACCEL  = 17;    // air rotation acceleration (rad/s^2)
-const ANG_MAX    = 10.5;  // max air spin (rad/s)
+const ANG_ACCEL  = 32;    // air rotation acceleration (rad/s^2)
+const ANG_MAX    = 16;    // max air spin (rad/s)
 const HALF_WB    = WHEEL_BASE / 2; // half the wheelbase = half the support base
 const COG_HEIGHT = 18;    // center-of-gravity height above the wheels (lower = more stable)
 const WALL_TOL   = 18;    // how far the surface can be above the wheels before it's a wall
