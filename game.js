@@ -164,6 +164,9 @@ function startGame() {
   state = STATE.PLAYING;
   hideOverlay();
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
 }
 
 // ===========================================================
