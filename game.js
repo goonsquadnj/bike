@@ -36,6 +36,21 @@ let JUMP_CUT  = 0.46;  // velocity multiplier on early jump release (min jump he
     if (s.jumpCut   != null) JUMP_CUT  = s.jumpCut;
   } catch(e) {}
 })();
+const GUN_TYPES = {
+  pistol:  { ammo:8,  label:'🔫', name:'PISTOL',  color:'#c0b8ff', bSpeed:900,  recoil:120, spread:0,    pierce:false },
+  shotgun: { ammo:4,  label:'💥', name:'SHOTGUN', color:'#ff8840', bSpeed:700,  recoil:200, spread:0.18, pierce:false },
+  rocket:  { ammo:3,  label:'🚀', name:'ROCKET',  color:'#ff4030', bSpeed:500,  recoil:520, spread:0,    pierce:false },
+  laser:   { ammo:10, label:'⚡', name:'LASER',   color:'#40ffcc', bSpeed:1600, recoil:60,  spread:0,    pierce:true  },
+  cannon:  { ammo:2,  label:'💣', name:'CANNON',  color:'#ffd040', bSpeed:450,  recoil:720, spread:0,    pierce:false },
+};
+const GUN_KEYS = Object.keys(GUN_TYPES);
+
+const MONSTERS = [];
+const BULLETS  = [];
+const GUN_DROPS = [];
+
+let monsterTimer = 3, gunTimer = 6;
+
 const HALF_WB    = WHEEL_BASE / 2; // half the wheelbase = half the support base
 const COG_HEIGHT = 18;    // center-of-gravity height above the wheels (lower = more stable)
 const WALL_TOL   = 18;    // how far the surface can be above the wheels before it's a wall
@@ -179,11 +194,15 @@ function resetBike() {
     boost: 0,            // seconds of boost remaining (also a safety cap)
     boostedAir: false,   // used a boost since leaving the ground?
     airJumps: 0,         // mid-air jumps available (from double-jump pickups)
+    gun: null,
+    ammo: 0,
   };
   wheelSpin = 0;
   shake = 0;
   parts.length = 0;
   for (const p of POWERUPS) p.taken = false;
+  MONSTERS.length = 0; BULLETS.length = 0; GUN_DROPS.length = 0;
+  monsterTimer = 3; gunTimer = 6;
 }
 
 function startGame() {
@@ -367,10 +386,25 @@ function update(dt) {
   const curSpeed = SPEED * (bike.boost > 0 ? BOOST_MULT : 1);
   if (bike.boost > 0) bike.boost -= dt;
 
-  // Jump — grounded jump, or a mid-air double-jump if a charge is held.
+  // Jump — grounded jump, shoot if airborne with gun, or mid-air double-jump.
   if (input.jumpEdge) {
     if (bike.grounded) {
       bike.vy = JUMP_VEL; bike.grounded = false;
+    } else if (bike.gun && bike.ammo > 0) {
+      // Shoot
+      const gt = GUN_TYPES[bike.gun];
+      if (gt.spread > 0) {
+        for (let i = -2; i <= 2; i++) {
+          const ang = bike.angle + i * gt.spread;
+          BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(ang) * gt.bSpeed, vy: Math.sin(ang) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
+        }
+      } else {
+        BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(bike.angle) * gt.bSpeed, vy: Math.sin(bike.angle) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
+      }
+      bike.vy += -Math.sin(bike.angle) * gt.recoil;
+      bike.ammo--;
+      if (bike.ammo <= 0) bike.gun = null;
+      input.jumpRelease = false;
     } else if (bike.airJumps > 0) {
       bike.vy = JUMP_VEL; bike.airJumps--;
       spawnBurst(bike.x, bike.y + 10, 10, ['#5be0ff', '#b48cff', '#ffffff']); // air-jump puff
@@ -483,6 +517,83 @@ function update(dt) {
 
   // Flipped over while grounded (safety net).
   if (bike.grounded && Math.abs(normalizeAngle(bike.angle)) > 2.6) { crash('Flipped over.'); return; }
+
+  // Spawn monsters.
+  monsterTimer -= dt;
+  if (monsterTimer <= 0) {
+    monsterTimer = 2.5 + Math.random() * 3;
+    const isFly = Math.random() < 0.5;
+    if (isFly) {
+      MONSTERS.push({ type:'fly', x: bike.x + 700 + Math.random() * 400, baseY: 80 + Math.random() * 200, y: 0, phase: Math.random() * Math.PI * 2, dead: false });
+    } else {
+      const gx = bike.x + 700 + Math.random() * 400;
+      const gy = groundY(gx);
+      if (gy !== null) MONSTERS.push({ type:'ground', x: gx, baseY: gy, y: gy, phase: Math.random() * Math.PI * 2, dead: false });
+    }
+  }
+
+  // Spawn gun drops.
+  gunTimer -= dt;
+  if (gunTimer <= 0) {
+    gunTimer = 8 + Math.random() * 10;
+    const gx = bike.x + 500 + Math.random() * 400;
+    const gy = groundY(gx);
+    if (gy !== null) {
+      const key = GUN_KEYS[(Math.random() * GUN_KEYS.length) | 0];
+      GUN_DROPS.push({ x: gx, y: gy - 40, gun: key, taken: false });
+    }
+  }
+
+  // Update monsters.
+  for (let i = MONSTERS.length - 1; i >= 0; i--) {
+    const m = MONSTERS[i];
+    if (m.dead) { MONSTERS.splice(i, 1); continue; }
+    if (m.x < bike.x - 200) { MONSTERS.splice(i, 1); continue; }
+    if (m.type === 'fly') {
+      m.y = m.baseY + Math.sin(timeSec * 2.5 + m.phase) * 36;
+    } else {
+      m.y = m.baseY + Math.sin(timeSec * 3 + m.phase) * 5;
+    }
+    // Collision with bike points.
+    const mrad = 20;
+    for (const p of points) {
+      const dx = p.x - m.x, dy = p.y - m.y;
+      if (dx * dx + dy * dy < (p.r + mrad) * (p.r + mrad)) { crash('Hit by a monster!'); return; }
+    }
+  }
+
+  // Update bullets.
+  for (let i = BULLETS.length - 1; i >= 0; i--) {
+    const b = BULLETS[i];
+    b.vy += GRAVITY * 0.3 * dt;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.life -= dt;
+    if (b.life <= 0 || Math.abs(b.x - bike.x) > 1400) { BULLETS.splice(i, 1); continue; }
+    // Hit-test vs monsters.
+    let bKilled = false;
+    for (let j = MONSTERS.length - 1; j >= 0; j--) {
+      const m = MONSTERS[j];
+      const dx = b.x - m.x, dy = b.y - m.y;
+      if (dx * dx + dy * dy < 24 * 24) {
+        spawnBurst(m.x, m.y, 12, ['#ff4444', '#ff8844', '#ffffff']);
+        MONSTERS.splice(j, 1);
+        if (!b.pierce) { bKilled = true; break; }
+      }
+    }
+    if (bKilled) { BULLETS.splice(i, 1); }
+  }
+
+  // Gun drop pickups.
+  for (const gd of GUN_DROPS) {
+    if (gd.taken) continue;
+    const dx = bike.x - gd.x, dy = bike.y - gd.y;
+    if (dx * dx + dy * dy < 40 * 40) {
+      gd.taken = true;
+      bike.gun = gd.gun;
+      bike.ammo = GUN_TYPES[gd.gun].ammo;
+      spawnBurst(gd.x, gd.y, 14, [GUN_TYPES[gd.gun].color, '#ffffff', '#ccccff']);
+    }
+  }
 
   // Finish line.
   if (bike.x >= FINISH_X) win();
@@ -731,6 +842,110 @@ function drawBike(camX) {
   ctx.restore();
 }
 
+function drawMonsters(camX) {
+  for (const m of MONSTERS) {
+    const sx = m.x - camX, sy = m.y;
+    if (sx < -60 || sx > W + 60) continue;
+    ctx.save();
+    ctx.translate(sx, sy);
+    if (m.type === 'fly') {
+      // Flapping wings: two dark purple ellipses that animate
+      const flap = Math.sin(timeSec * 12 + m.phase) * 0.5;
+      ctx.fillStyle = '#3a1060';
+      ctx.save(); ctx.rotate(-0.4 + flap); ctx.scale(1, 0.45);
+      ctx.beginPath(); ctx.ellipse(-18, 0, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.save(); ctx.rotate(0.4 - flap); ctx.scale(1, 0.45);
+      ctx.beginPath(); ctx.ellipse(18, 0, 22, 10, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Body
+      ctx.fillStyle = '#1e0838';
+      ctx.beginPath(); ctx.ellipse(0, 0, 10, 7, 0, 0, Math.PI * 2); ctx.fill();
+      // Glowing red eyes
+      ctx.shadowColor = '#ff2020'; ctx.shadowBlur = 8;
+      ctx.fillStyle = '#ff4040';
+      ctx.beginPath(); ctx.arc(-4, -2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -2, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    } else {
+      // Ground blob
+      const bob = Math.sin(timeSec * 3 + m.phase) * 5;
+      ctx.translate(0, bob);
+      ctx.fillStyle = '#1a0d30';
+      ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
+      // Bumps
+      ctx.fillStyle = '#2a1040';
+      for (let k = 0; k < 3; k++) {
+        const bx = (k - 1) * 12, by = -14 + Math.abs(k - 1) * 4;
+        ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
+      }
+      // Orange eyes
+      ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 8;
+      ctx.fillStyle = '#ffaa00';
+      ctx.beginPath(); ctx.arc(-6, -4, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(6, -4, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  }
+}
+
+function drawBullets(camX) {
+  for (const b of BULLETS) {
+    const sx = b.x - camX;
+    if (sx < -20 || sx > W + 20) continue;
+    const gt = GUN_TYPES[b.gun];
+    const ang = Math.atan2(b.vy, b.vx);
+    const len = b.gun === 'laser' ? 22 : 10;
+    ctx.save();
+    ctx.translate(sx, b.y);
+    ctx.rotate(ang);
+    ctx.shadowColor = gt.color; ctx.shadowBlur = 12;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = b.gun === 'laser' ? 3 : 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len, 0); ctx.stroke();
+    ctx.strokeStyle = gt.color; ctx.lineWidth = b.gun === 'laser' ? 6 : 8;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(len, 0); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
+function drawGunDrops(camX, t) {
+  for (const gd of GUN_DROPS) {
+    if (gd.taken) continue;
+    const sx = gd.x - camX;
+    if (sx < -60 || sx > W + 60) continue;
+    const gt = GUN_TYPES[gd.gun];
+    const bob = Math.sin(t * 3 + gd.x) * 5;
+    const sy = gd.y + bob;
+    // Glow
+    const glow = ctx.createRadialGradient(sx, sy, 2, sx, sy, 34);
+    glow.addColorStop(0, gt.color + 'cc');
+    glow.addColorStop(1, gt.color + '00');
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(sx, sy, 34, 0, Math.PI * 2); ctx.fill();
+    // Pill badge background
+    ctx.fillStyle = '#1a0d30';
+    ctx.beginPath(); ctx.arc(sx - 14, sy, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx + 14, sy, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(sx - 14, sy - 14, 28, 28);
+    ctx.strokeStyle = gt.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(sx - 14, sy, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx + 14, sy, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeRect(sx - 14, sy - 14, 28, 28);
+    // Label
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(gt.label + ' ' + gt.name, sx, sy);
+  }
+}
+
 let timeSec = 0;
 function render() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -751,6 +966,9 @@ function render() {
   drawTerrain(camX);
   drawObstacles(camX);
   drawPowerups(camX, timeSec);
+  drawGunDrops(camX, timeSec);
+  drawMonsters(camX);
+  drawBullets(camX);
   drawFinish(camX);
   drawParticles(camX);
   if (bike) drawBike(camX);
@@ -781,12 +999,20 @@ const distEl = document.getElementById('dist');
 const bestEl = document.getElementById('best');
 const boostEl = document.getElementById('boost');
 const djumpEl = document.getElementById('djump');
+const gunEl  = document.getElementById('gun');
 function updateHud() {
   const d = state === STATE.WON ? distM(LEVEL_END) : (bike ? distM(bike.x) : 0);
   distEl.textContent = d;
   bestEl.textContent = best;
   boostEl.classList.toggle('on', !!(bike && bike.boost > 0));
   djumpEl.classList.toggle('on', !!(bike && bike.airJumps > 0));
+  if (bike && bike.gun) {
+    const gt = GUN_TYPES[bike.gun];
+    gunEl.textContent = gt.label + ' ' + gt.name + ' ×' + bike.ammo;
+    gunEl.classList.add('on');
+  } else {
+    gunEl.classList.remove('on');
+  }
 }
 
 // ===========================================================

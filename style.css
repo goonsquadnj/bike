@@ -81,6 +81,15 @@ html, body {
 .boost.djump.on { animation: djumpPulse 0.5s ease-in-out infinite alternate; }
 @keyframes djumpPulse { to { box-shadow: 0 0 26px rgba(150, 200, 255, 0.95); } }
 
+/* Gun indicator */
+.gun-chip {
+  color: #0d1230;
+  background: linear-gradient(90deg, #a259ff, #40ffcc);
+  box-shadow: 0 0 18px rgba(100, 200, 255, 0.7);
+}
+.gun-chip.on { animation: gunPulse 0.5s ease-in-out infinite alternate; }
+@keyframes gunPulse { to { box-shadow: 0 0 26px rgba(160, 100, 255, 0.95); } }
+
 /* Overlay */
 #overlay {
   position: absolute;
