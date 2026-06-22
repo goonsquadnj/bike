@@ -13,7 +13,8 @@ html, body {
 #game {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh; /* dvh = dynamic viewport height, shrinks when browser chrome shows */
+  height: 100vh;  /* fallback for browsers without dvh */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -140,7 +141,7 @@ html, body {
 /* Controls */
 #controls {
   position: absolute;
-  bottom: 22px;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   display: flex;

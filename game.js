@@ -326,7 +326,9 @@ function update(dt) {
   wheelSpin += (curSpeed / WHEEL_R) * dt;
 
   // Vertical integration.
-  bike.vy += GRAVITY * dt;
+  // Hold jump to float longer (reduced gravity while rising); release early for a tiny hop.
+  const grav = (input.jump && bike.vy < 0 && !bike.grounded) ? GRAVITY * 0.35 : GRAVITY;
+  bike.vy += grav * dt;
   bike.y += bike.vy * dt;
 
   // Air rotation control (auto-level when no button held).
