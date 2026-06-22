@@ -180,7 +180,7 @@ function groundY(x) { const s = surfaceAt(x); return s ? s.y : null; }
 // ===========================================================
 const STATE = { READY: 'ready', PLAYING: 'playing', CRASHED: 'crashed', WON: 'won' };
 
-let bike, state, best = 0, crashReason = '', wheelSpin = 0, shake = 0;
+let bike, state, best = 0, crashReason = '', wheelSpin = 0, shake = 0, timeScale = 1.0;
 
 function resetBike() {
   bike = {
@@ -196,9 +196,11 @@ function resetBike() {
     airJumps: 0,         // mid-air jumps available (from double-jump pickups)
     gun: null,
     ammo: 0,
+    fireCooldown: 0,
   };
   wheelSpin = 0;
   shake = 0;
+  timeScale = 1.0;
   parts.length = 0;
   for (const p of POWERUPS) p.taken = false;
   MONSTERS.length = 0; BULLETS.length = 0; GUN_DROPS.length = 0;
@@ -383,28 +385,18 @@ function updateParticles(dt) {
 function update(dt) {
   if (state !== STATE.PLAYING) { input.jumpEdge = false; updateParticles(dt); return; }
 
-  const curSpeed = SPEED * (bike.boost > 0 ? BOOST_MULT : 1);
-  if (bike.boost > 0) bike.boost -= dt;
+  // Bullet-time: slow-mo when airborne, real-time when grounded.
+  const tsTarget = bike.grounded ? 1.0 : 0.38;
+  timeScale += (tsTarget - timeScale) * dt * 8;
+  const scaledDt = dt * timeScale;
 
-  // Jump — grounded jump, shoot if airborne with gun, or mid-air double-jump.
+  const curSpeed = SPEED * (bike.boost > 0 ? BOOST_MULT : 1);
+  if (bike.boost > 0) bike.boost -= scaledDt;
+
+  // Jump — grounded jump or mid-air double-jump.
   if (input.jumpEdge) {
     if (bike.grounded) {
       bike.vy = JUMP_VEL; bike.grounded = false;
-    } else if (bike.gun && bike.ammo > 0) {
-      // Shoot
-      const gt = GUN_TYPES[bike.gun];
-      if (gt.spread > 0) {
-        for (let i = -2; i <= 2; i++) {
-          const ang = bike.angle + i * gt.spread;
-          BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(ang) * gt.bSpeed, vy: Math.sin(ang) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
-        }
-      } else {
-        BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(bike.angle) * gt.bSpeed, vy: Math.sin(bike.angle) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
-      }
-      bike.vy += -Math.sin(bike.angle) * gt.recoil;
-      bike.ammo--;
-      if (bike.ammo <= 0) bike.gun = null;
-      input.jumpRelease = false;
     } else if (bike.airJumps > 0) {
       bike.vy = JUMP_VEL; bike.airJumps--;
       spawnBurst(bike.x, bike.y + 10, 10, ['#5be0ff', '#b48cff', '#ffffff']); // air-jump puff
@@ -412,31 +404,65 @@ function update(dt) {
   }
   input.jumpEdge = false;
 
+  // Auto-fire while airborne.
+  if (!bike.grounded && bike.gun && bike.ammo > 0) {
+    bike.fireCooldown -= scaledDt;
+    if (bike.fireCooldown <= 0) {
+      // find nearest visible monster
+      let nearest = null, nearDist = Infinity;
+      for (const m of MONSTERS) {
+        const dx = m.x - bike.x, dy = m.y - bike.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < nearDist && d < 700) { nearest = m; nearDist = d; }
+      }
+      // aim toward nearest monster, else fire along bike angle
+      let aimAngle = bike.angle;
+      if (nearest) {
+        aimAngle = Math.atan2(nearest.y - bike.y, nearest.x - bike.x);
+      }
+      const gt = GUN_TYPES[bike.gun];
+      if (gt.spread > 0) {
+        for (let i = -2; i <= 2; i++) {
+          BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(aimAngle + i * gt.spread) * gt.bSpeed, vy: Math.sin(aimAngle + i * gt.spread) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
+        }
+      } else {
+        BULLETS.push({ x: bike.x, y: bike.y, vx: Math.cos(aimAngle) * gt.bSpeed, vy: Math.sin(aimAngle) * gt.bSpeed, life: 1.5, gun: bike.gun, pierce: gt.pierce });
+      }
+      // Recoil only for rocket/cannon (high recoil guns)
+      if (gt.recoil > 300) bike.vy += -Math.sin(aimAngle) * gt.recoil * 0.15;
+      bike.ammo--;
+      if (bike.ammo <= 0) bike.gun = null;
+      // fire rate: pistol=0.18s, shotgun=0.45s, rocket=0.8s, laser=0.1s, cannon=1.2s
+      const fireRates = { pistol:0.18, shotgun:0.45, rocket:0.8, laser:0.1, cannon:1.2 };
+      bike.fireCooldown = fireRates[bike.gun] || 0.25;
+    }
+  }
+
   // Horizontal: constant (or boosted) speed.
-  bike.x += curSpeed * dt;
-  wheelSpin += (curSpeed / WHEEL_R) * dt;
+  bike.x += curSpeed * scaledDt;
+  wheelSpin += (curSpeed / WHEEL_R) * scaledDt;
 
   // Short-press = short jump: releasing jump early cuts upward velocity.
   if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= JUMP_CUT;
   input.jumpRelease = false;
 
   // Vertical integration.
-  bike.vy += GRAVITY * dt;
-  bike.y += bike.vy * dt;
+  bike.vy += GRAVITY * scaledDt;
+  bike.y += bike.vy * scaledDt;
 
   // Air rotation control (auto-level when no button held).
   if (!bike.grounded) {
-    bike.airTime += dt;
+    bike.airTime += scaledDt;
     if (input.fwd) {
-      bike.angVel += ANG_ACCEL * dt;
+      bike.angVel += ANG_ACCEL * scaledDt;
     } else if (input.back) {
-      bike.angVel -= ANG_ACCEL * dt;
+      bike.angVel -= ANG_ACCEL * scaledDt;
     } else {
       const a = normalizeAngle(bike.angle);
-      bike.angVel += (-a * 16 - bike.angVel * 6) * dt;
+      bike.angVel += (-a * 16 - bike.angVel * 6) * scaledDt;
     }
     bike.angVel = Math.max(-ANG_MAX, Math.min(ANG_MAX, bike.angVel));
-    bike.angle += bike.angVel * dt;
+    bike.angle += bike.angVel * scaledDt;
   }
 
   // Ground contact / gaps / walls.
@@ -518,7 +544,7 @@ function update(dt) {
   // Flipped over while grounded (safety net).
   if (bike.grounded && Math.abs(normalizeAngle(bike.angle)) > 2.6) { crash('Flipped over.'); return; }
 
-  // Spawn monsters.
+  // Spawn monsters (real time).
   monsterTimer -= dt;
   if (monsterTimer <= 0) {
     monsterTimer = 2.5 + Math.random() * 3;
@@ -532,7 +558,7 @@ function update(dt) {
     }
   }
 
-  // Spawn gun drops.
+  // Spawn gun drops (real time).
   gunTimer -= dt;
   if (gunTimer <= 0) {
     gunTimer = 8 + Math.random() * 10;
@@ -550,8 +576,10 @@ function update(dt) {
     if (m.dead) { MONSTERS.splice(i, 1); continue; }
     if (m.x < bike.x - 200) { MONSTERS.splice(i, 1); continue; }
     if (m.type === 'fly') {
+      m.phase += scaledDt;
       m.y = m.baseY + Math.sin(timeSec * 2.5 + m.phase) * 36;
     } else {
+      m.phase += scaledDt;
       m.y = m.baseY + Math.sin(timeSec * 3 + m.phase) * 5;
     }
     // Collision with bike points.
@@ -565,9 +593,9 @@ function update(dt) {
   // Update bullets.
   for (let i = BULLETS.length - 1; i >= 0; i--) {
     const b = BULLETS[i];
-    b.vy += GRAVITY * 0.3 * dt;
-    b.x += b.vx * dt; b.y += b.vy * dt;
-    b.life -= dt;
+    b.vy += GRAVITY * 0.3 * scaledDt;
+    b.x += b.vx * scaledDt; b.y += b.vy * scaledDt;
+    b.life -= scaledDt;
     if (b.life <= 0 || Math.abs(b.x - bike.x) > 1400) { BULLETS.splice(i, 1); continue; }
     // Hit-test vs monsters.
     let bKilled = false;
@@ -577,6 +605,7 @@ function update(dt) {
       if (dx * dx + dy * dy < 24 * 24) {
         spawnBurst(m.x, m.y, 12, ['#ff4444', '#ff8844', '#ffffff']);
         MONSTERS.splice(j, 1);
+        shake = Math.max(shake, 4);
         if (!b.pierce) { bKilled = true; break; }
       }
     }
@@ -599,7 +628,7 @@ function update(dt) {
   if (bike.x >= FINISH_X) win();
 
   if (shake > 0) shake = Math.max(0, shake - 40 * dt);
-  updateParticles(dt);
+  updateParticles(scaledDt);
 }
 
 // ===========================================================
@@ -978,6 +1007,13 @@ function render() {
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(1, 'rgba(10,4,20,0.45)');
   ctx.fillStyle = vg; ctx.fillRect(-sh, -sv, W, H);
+
+  // Slow-mo purple overlay when in bullet-time
+  if (timeScale < 0.7) {
+    const intensity = (1 - timeScale / 0.7) * 0.18;
+    ctx.fillStyle = `rgba(80, 20, 120, ${intensity})`;
+    ctx.fillRect(-sh, -sv, W, H);
+  }
 
   ctx.restore();
 }
