@@ -201,12 +201,12 @@ window.addEventListener('keyup', (e) => {
 
 function bindButton(id, name) {
   const el = document.getElementById(id);
-  const on  = (e) => { e.preventDefault(); press(name, true); };
+  const on  = (e) => { e.preventDefault(); el.setPointerCapture(e.pointerId); press(name, true); };
   const off = (e) => { e.preventDefault(); press(name, false); };
   el.addEventListener('pointerdown', on);
   el.addEventListener('pointerup', off);
-  el.addEventListener('pointerleave', off);
   el.addEventListener('pointercancel', off);
+  // pointerleave removed — capture keeps events on the element even if thumb drifts off
 }
 bindButton('jumpBtn', 'jump');
 bindButton('leanBack', 'back');
