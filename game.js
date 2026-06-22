@@ -14,13 +14,28 @@ const H = 540;            // logical height
 const SPEED      = 480;   // base horizontal speed (px/s)
 const BOOST_MULT = 1.65;  // speed multiplier while boosting
 const BOOST_TIME = 2.6;   // seconds a boost lasts
-const GRAVITY    = 1500;  // px/s^2
-const JUMP_VEL   = -700;  // upward launch from the jump button
 const RIDE_H     = 30;    // chassis center height above the surface when resting
 const WHEEL_BASE = 64;    // distance between the two wheels
 const WHEEL_R    = 15;    // wheel radius
-const ANG_ACCEL  = 32;    // air rotation acceleration (rad/s^2)
-const ANG_MAX    = 16;    // max air spin (rad/s)
+
+// ---- Physics tunables (overridden by saved settings from the editor) ----
+let GRAVITY   = 1500;  // px/s^2
+let JUMP_VEL  = -700;  // upward launch velocity
+let ANG_ACCEL = 32;    // air rotation acceleration (rad/s^2)
+let ANG_MAX   = 16;    // max air spin (rad/s)
+let JUMP_CUT  = 0.46;  // velocity multiplier on early jump release (min jump height)
+
+(function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('rampRiderSettings') || 'null');
+    if (!s) return;
+    if (s.gravity   != null) GRAVITY   = s.gravity;
+    if (s.jumpVel   != null) JUMP_VEL  = -Math.abs(s.jumpVel);
+    if (s.angAccel  != null) ANG_ACCEL = s.angAccel;
+    if (s.angMax    != null) ANG_MAX   = s.angMax;
+    if (s.jumpCut   != null) JUMP_CUT  = s.jumpCut;
+  } catch(e) {}
+})();
 const HALF_WB    = WHEEL_BASE / 2; // half the wheelbase = half the support base
 const COG_HEIGHT = 18;    // center-of-gravity height above the wheels (lower = more stable)
 const WALL_TOL   = 18;    // how far the surface can be above the wheels before it's a wall
@@ -368,7 +383,7 @@ function update(dt) {
   wheelSpin += (curSpeed / WHEEL_R) * dt;
 
   // Short-press = short jump: releasing jump early cuts upward velocity.
-  if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= 0.46;
+  if (input.jumpRelease && !bike.grounded && bike.vy < 0) bike.vy *= JUMP_CUT;
   input.jumpRelease = false;
 
   // Vertical integration.

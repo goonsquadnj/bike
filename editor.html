@@ -9,15 +9,15 @@
 <body>
   <div id="toolbar">
     <div class="tool-group">
-      <button class="tool active" data-tool="select" title="Drag terrain points up/down">↖ Select</button>
-      <button class="tool" data-tool="erase" title="Click objects to delete">🗑 Erase</button>
-      <button class="tool" data-tool="crate" title="Click terrain to place a crate">📦 Crate</button>
-      <button class="tool" data-tool="boost" title="Click terrain to place a boost">⚡ Boost</button>
-      <button class="tool" data-tool="djump" title="Click terrain to place a double-jump">⏫ D-Jump</button>
+      <button class="tool active" data-tool="select">↖ Select</button>
+      <button class="tool" data-tool="erase">🗑 Erase</button>
+      <button class="tool" data-tool="crate">📦 Crate</button>
+      <button class="tool" data-tool="boost">⚡ Boost</button>
+      <button class="tool" data-tool="djump">⏫ D-Jump</button>
     </div>
     <div class="tool-group right">
-      <button id="resetBtn">↺ Reset to Default</button>
-      <button id="saveBtn" class="primary">💾 Save &amp; Play</button>
+      <button id="resetBtn">↺ Reset Level</button>
+      <button id="saveBtn" class="primary">▶ Save &amp; Play</button>
     </div>
   </div>
 
@@ -25,6 +25,46 @@
 
   <div id="canvas-wrap">
     <canvas id="editor-canvas"></canvas>
+  </div>
+
+  <!-- Physics panel -->
+  <div id="physics-panel">
+    <div class="panel-header" id="physics-toggle">⚙ Physics <span class="chevron">▾</span></div>
+    <div class="panel-body" id="physics-body">
+      <div class="slider-row">
+        <label>Gravity <span class="val" id="grav-val"></span></label>
+        <input type="range" id="sl-gravity" min="400" max="3000" step="50" />
+      </div>
+      <div class="slider-row">
+        <label>Max Jump Height <span class="val" id="jump-val"></span></label>
+        <input type="range" id="sl-jump" min="300" max="1200" step="25" />
+      </div>
+      <div class="slider-row">
+        <label>Min Jump % <span class="val" id="cut-val"></span></label>
+        <input type="range" id="sl-cut" min="10" max="90" step="5" />
+      </div>
+      <div class="slider-row">
+        <label>Spin Rate <span class="val" id="spin-val"></span></label>
+        <input type="range" id="sl-spin" min="5" max="80" step="1" />
+      </div>
+      <div class="slider-row">
+        <label>Max Spin Speed <span class="val" id="spinmax-val"></span></label>
+        <input type="range" id="sl-spinmax" min="5" max="30" step="0.5" />
+      </div>
+      <button id="resetPhysicsBtn" class="small">↺ Reset Physics</button>
+    </div>
+  </div>
+
+  <!-- Saves panel -->
+  <div id="saves-panel">
+    <div class="panel-header" id="saves-toggle">💾 Levels <span class="chevron">▾</span></div>
+    <div class="panel-body" id="saves-body">
+      <div class="save-row">
+        <input type="text" id="save-name" placeholder="Level name…" maxlength="30" />
+        <button id="saveSlotBtn">Save to Slot</button>
+      </div>
+      <div id="slot-list"></div>
+    </div>
   </div>
 
   <script>window.EDITOR_MODE = true;</script>

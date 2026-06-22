@@ -5,27 +5,31 @@ html, body {
   background: #0e0820;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: #fce8d6;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   user-select: none;
 }
 
+/* ---- Toolbar ---- */
 #toolbar {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: #1a0f2e;
   border-bottom: 1px solid #3a1f4e;
   gap: 8px;
   flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
-
-.tool-group { display: flex; gap: 6px; align-items: center; }
+.tool-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tool-group.right { margin-left: auto; }
 
 button {
   font-size: 13px;
   font-weight: 700;
-  padding: 7px 13px;
+  padding: 6px 12px;
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.15);
   background: rgba(255,255,255,0.07);
@@ -44,8 +48,14 @@ button.primary {
   background: linear-gradient(90deg, #ffd24d, #ff7a4d);
   border: none;
   color: #1a0f2e;
+  font-size: 14px;
 }
 button.primary:hover { filter: brightness(1.1); }
+button.small {
+  font-size: 11px;
+  padding: 4px 10px;
+  margin-top: 4px;
+}
 
 #hint {
   text-align: center;
@@ -55,16 +65,117 @@ button.primary:hover { filter: brightness(1.1); }
   background: #150a26;
   border-bottom: 1px solid #241040;
   min-height: 26px;
-  letter-spacing: 0.5px;
 }
 
+/* ---- Canvas ---- */
 #canvas-wrap {
   overflow-x: scroll;
   overflow-y: hidden;
   display: flex;
   align-items: center;
-  height: calc(100dvh - 82px);
+  height: 260px;
   background: #0e0820;
+  border-bottom: 1px solid #2a1040;
+}
+#editor-canvas { display: block; flex-shrink: 0; cursor: crosshair; }
+
+/* ---- Collapsible panels ---- */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  background: #1a0f2e;
+  border-bottom: 1px solid #2a1040;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.panel-header:hover { background: #221440; }
+.chevron { font-size: 11px; transition: transform 0.2s; }
+.panel-header.closed .chevron { transform: rotate(-90deg); }
+
+.panel-body {
+  padding: 12px 16px;
+  background: #130827;
+  border-bottom: 1px solid #241040;
+}
+.panel-body.hidden { display: none; }
+
+/* ---- Physics sliders ---- */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.slider-row label {
+  width: 180px;
+  font-size: 12px;
+  color: #d99a78;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+}
+.val { color: #ffd24d; font-weight: 700; min-width: 36px; text-align: right; }
+input[type=range] {
+  flex: 1;
+  accent-color: #ff9e3d;
+  cursor: pointer;
 }
 
-#editor-canvas { display: block; flex-shrink: 0; cursor: crosshair; }
+/* ---- Save slots ---- */
+.save-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+#save-name {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  color: #fce8d6;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+#save-name::placeholder { color: rgba(255,200,160,0.4); }
+#save-name:focus { outline: none; border-color: rgba(255,158,77,0.6); }
+
+.slot-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  margin-bottom: 6px;
+}
+.slot-item.active-slot {
+  border-color: rgba(255,210,77,0.55);
+  background: rgba(255,200,77,0.08);
+}
+.slot-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slot-date { font-size: 10px; color: #a08090; white-space: nowrap; }
+.slot-btns { display: flex; gap: 5px; flex-shrink: 0; }
+.slot-btns button { padding: 4px 9px; font-size: 11px; }
+.slot-btns .load-btn { border-color: rgba(255,158,77,0.5); color: #ffd24d; }
+.slot-btns .del-btn  { border-color: rgba(255,80,80,0.4);  color: #ff8080; }
+.slot-active-badge {
+  font-size: 10px;
+  background: rgba(255,210,77,0.2);
+  border: 1px solid rgba(255,210,77,0.5);
+  color: #ffd24d;
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
