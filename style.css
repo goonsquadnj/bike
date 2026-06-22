@@ -182,7 +182,7 @@ html, body {
 .ctrl:active { transform: scale(0.93); background: rgba(255, 158, 77, 0.32); }
 .ctrl.rot { width: 66px; height: 66px; font-size: 26px; }
 .ctrl.jump {
-  width: 96px; height: 96px; font-size: 18px; letter-spacing: 1px;
+  width: 130px; height: 130px; font-size: 18px; letter-spacing: 1px;
   border-radius: 50%;
   background: rgba(255, 158, 77, 0.2);
   border-color: rgba(255, 158, 77, 0.55);

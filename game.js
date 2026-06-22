@@ -11,7 +11,7 @@ const W = 960;            // logical width
 const H = 540;            // logical height
 
 // ---- Tuning constants ----
-const SPEED      = 400;   // base horizontal speed (px/s)
+const SPEED      = 480;   // base horizontal speed (px/s)
 const BOOST_MULT = 1.65;  // speed multiplier while boosting
 const BOOST_TIME = 2.6;   // seconds a boost lasts
 const GRAVITY    = 1500;  // px/s^2
